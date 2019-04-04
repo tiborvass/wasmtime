@@ -63,8 +63,8 @@ including calling the start function if one is present. Additional functions
 given with --invoke are then called.
 
 Usage:
-    wasmtime [-odg] [--preload=<wasm>...] [--env=<env>...] [--dir=<dir>...] [--mapdir=<mapping>...] <file> [<arg>...]
-    wasmtime [-odg] [--preload=<wasm>...] [--env=<env>...] [--dir=<dir>...] [--mapdir=<mapping>...] --invoke=<fn> <file> [<arg>...]
+    wasmtime [-odg] [--preload=<wasm>...] [--env=<env>...] [--dir=<dir>...] [--mapdir=<mapping>...] [--fd=<fd>...] <file> [<arg>...]
+    wasmtime [-odg] [--preload=<wasm>...] [--env=<env>...] [--dir=<dir>...] [--mapdir=<mapping>...] [--fd=<fd>...] --invoke=<fn> <file> [<arg>...]
     wasmtime --help | --version
 
 Options:
@@ -74,6 +74,7 @@ Options:
     -d, --debug         enable debug output on stderr/stdout
     --preload=<wasm>    load an additional wasm module before loading the main module
     --env=<env>         pass an environment variable (\"key=value\") to the program
+    --fd=<fd>           pass an fd to the program
     --dir=<dir>         grant access to the given host directory
     --mapdir=<mapping>  where <mapping> has the form <wasmdir>:<hostdir>, grant access to
                         the given host directory with the given wasm directory name
@@ -93,6 +94,7 @@ struct Args {
     flag_env: Vec<String>,
     flag_dir: Vec<String>,
     flag_mapdir: Vec<String>,
+    flag_fd: Vec<libc::c_int>,
 }
 
 fn read_to_end(path: PathBuf) -> Result<Vec<u8>, io::Error> {
@@ -245,7 +247,7 @@ fn main() {
     let environ = compute_environ(&args.flag_env);
     context.name_instance(
         "wasi_unstable".to_owned(),
-        instantiate_wasi("", global_exports, &preopen_dirs, &argv, &environ)
+        instantiate_wasi("", global_exports, &preopen_dirs, &args.flag_fd, &argv, &environ)
             .expect("instantiating wasi"),
     );
 
@@ -254,7 +256,7 @@ fn main() {
     let global_exports = context.get_global_exports();
     context.name_instance(
         "env".to_owned(),
-        instantiate_wasi("__wasi_", global_exports, &preopen_dirs, &argv, &environ)
+        instantiate_wasi("__wasi_", global_exports, &preopen_dirs, &args.flag_fd,  &argv, &environ)
             .expect("instantiating wasi"),
     );
 

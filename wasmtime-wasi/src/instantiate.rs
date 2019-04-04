@@ -27,6 +27,7 @@ pub fn instantiate_wasi(
     prefix: &str,
     global_exports: Rc<RefCell<HashMap<String, Option<wasmtime_runtime::Export>>>>,
     preopened_dirs: &[(String, libc::c_int)],
+    preopened_fds: &[libc::c_int],
     argv: &[String],
     environ: &[(String, String)],
 ) -> Result<InstanceHandle, InstantiationError> {
@@ -142,6 +143,13 @@ pub fn instantiate_wasi(
         assert!(fd_table_insert_existing(curfds, 2, 2));
 
         let mut wasm_fd = 3;
+	for fd in preopened_fds {
+            assert!(fd_table_insert_existing(curfds, wasm_fd, *fd));
+            //TODO: add names to fds via fd_prestats_insert.
+
+            wasm_fd += 1;
+        }
+
         for (dir, fd) in preopened_dirs {
             assert!(fd_table_insert_existing(curfds, wasm_fd, *fd));
             assert!(fd_prestats_insert(
